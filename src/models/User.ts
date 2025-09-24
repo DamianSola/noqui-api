@@ -1,13 +1,12 @@
-// import { DataTypes, Model } from "sequelize";
-// import sequelize from "../config/database";
-
-const {DataTypes, Model} = require("sequelize");
-const sequelize = require('../config/database')
+import { DataTypes, Model } from "sequelize";
+import sequelize from "../config/database";
+import Company from "./Company"
 
 class User extends Model {
   public id!: number;
   public name!: string;
   public email!: string;
+  
 }
 
 User.init(
@@ -26,6 +25,11 @@ User.init(
       allowNull: false,
       unique: true,
     },
+    role:{
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'admin'
+    }
   },
   {
     sequelize,
@@ -33,5 +37,8 @@ User.init(
     tableName: "users",
   }
 );
+
+User.hasMany(Company)
+Company.belongsTo(User, {foreignKey: "owner"})
 
 export default User;
