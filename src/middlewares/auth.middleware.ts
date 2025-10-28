@@ -14,7 +14,6 @@ export const authenticateToken = (
 ): void => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-
   if (!token) {
     return next(createError('Token de acceso requerido', 401));
   }
