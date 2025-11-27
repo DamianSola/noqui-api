@@ -7,7 +7,7 @@ import {
   LoginInput, 
   AuthResponse,
   JwtPayload 
-} from '../types/auth.types';
+} from './auth.types';
 
 
 const prisma = new PrismaClient();

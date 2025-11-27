@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import { AuthService } from './auth.service';
+import { AuthService } from '../types/auth.service';
 import { ResponseHandler } from '../utils/apiResponse';
 import { validate } from '../middlewares/validation.middleware';
 

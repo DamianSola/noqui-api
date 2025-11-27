@@ -11,7 +11,7 @@ import dotenv from 'dotenv';
 import { config } from './config/environment';
 import { errorHandler } from './middlewares/errorHandler';
 import { notFoundHandler } from './middlewares/notFoundHandler';
-import { authRoutes } from './auth/auth.routes';
+import { authRoutes } from './routes/auth.routes';
 
 dotenv.config()
 

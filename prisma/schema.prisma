@@ -7,19 +7,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Tablas básicas para empezar
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
-  password  String   // Hasheada
+  password  String
   name      String?
   role      UserRole @default(USER)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relaciones (las expandiremos después)
   accounts      Account[]
   sessions      Session[]
+  ownedCompanies Company[] // Nueva relación
 
   @@map("users")
 }
@@ -54,12 +53,6 @@ model Session {
   @@map("sessions")
 }
 
-enum UserRole {
-  USER
-  ADMIN
-}
-
-
 model VerificationToken {
   identifier String
   token      String   @unique
@@ -77,4 +70,22 @@ model PasswordResetToken {
   createdAt DateTime @default(now())
 
   @@map("password_reset_tokens")
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ownerId   String
+  guests    String[] // Array de User IDs
+  
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  
+  @@map("companies")
+}
+
+enum UserRole {
+  USER
+  ADMIN
 }
