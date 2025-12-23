@@ -3,25 +3,25 @@ import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 
 import { 
-  ICompany, 
-  CreateCompanyInput, 
-  UpdateCompanyInput, 
-  CompanyResponse 
-} from '../types/company';
+  IBusiness, 
+  CreateBusinessInput, 
+  UpdateBusinessInput, 
+  BusinessResponse 
+} from '../types/business';
 
 const prisma = new PrismaClient();
 
 
-export class CompanyController {
+export class BusinessController {
   
   // Crear una nueva compañía
-  async createCompany(req: Request, res: Response): Promise<void> {
+  static async createBusiness(req: Request, res: Response): Promise<void> {
     try {
-      const { name, ownerId, guests = [] }: CreateCompanyInput = req.body;
+      const { name, ownerId, guests = [] }: CreateBusinessInput = req.body;
 
       // Validaciones básicas
       if (!name || !ownerId) {
-        const response: CompanyResponse = {
+        const response: BusinessResponse = {
           success: false,
           error: 'Nombre y ownerId son requeridos'
         };
@@ -35,7 +35,7 @@ export class CompanyController {
       });
 
       if (!userExists) {
-        const response: CompanyResponse = {
+        const response: BusinessResponse = {
           success: false,
           error: 'El usuario propietario no existe'
         };
@@ -43,7 +43,7 @@ export class CompanyController {
         return;
       }
 
-      const company = await prisma.company.create({
+      const business = await prisma.business.create({
         data: {
           name,
           ownerId,
@@ -51,16 +51,16 @@ export class CompanyController {
         }
       });
 
-      const response: CompanyResponse = {
+      const response: BusinessResponse = {
         success: true,
         message: 'Compañía creada exitosamente',
-        data: company
+        data: business
       };
 
       res.status(201).json(response);
     } catch (error) {
       console.error('Error creating company:', error);
-      const response: CompanyResponse = {
+      const response: BusinessResponse = {
         success: false,
         error: 'Error interno del servidor'
       };
@@ -69,13 +69,13 @@ export class CompanyController {
   }
 
   // Obtener todas las compañías
-  async getAllCompanies(req: Request, res: Response): Promise<void> {
+  static async getAllBusiness(req: Request, res: Response): Promise<void> {
     try {
       const { page = 1, limit = 10 } = req.query;
       const skip = (Number(page) - 1) * Number(limit);
 
       const [companies, total] = await Promise.all([
-        prisma.company.findMany({
+        prisma.business.findMany({
           skip,
           take: Number(limit),
           include: {
@@ -91,10 +91,10 @@ export class CompanyController {
             createdAt: 'desc'
           }
         }),
-        prisma.company.count()
+        prisma.business.count()
       ]);
 
-      const response: CompanyResponse = {
+      const response: BusinessResponse = {
         success: true,
         data: companies,
         message: `Se encontraron ${companies.length} compañías`
@@ -112,20 +112,20 @@ export class CompanyController {
       });
     } catch (error) {
       console.error('Error getting companies:', error);
-      const response: CompanyResponse = {
+      const response: BusinessResponse = {
         success: false,
-        error: 'Error al obtener las compañías'
+        error: 'Error al obtener los negocios'
       };
       res.status(500).json(response);
     }
   }
 
   // Obtener compañía por ID
-  async getCompanyById(req: Request, res: Response): Promise<void> {
+  static async getBusinessById(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
 
-      const company = await prisma.company.findUnique({
+      const company = await prisma.business.findUnique({
         where: { id },
         include: {
           owner: {
@@ -139,7 +139,7 @@ export class CompanyController {
       });
 
       if (!company) {
-        const response: CompanyResponse = {
+        const response: BusinessResponse = {
           success: false,
           error: 'Compañía no encontrada'
         };
@@ -147,7 +147,7 @@ export class CompanyController {
         return;
       }
 
-      const response: CompanyResponse = {
+      const response: BusinessResponse = {
         success: true,
         data: company
       };
@@ -155,7 +155,7 @@ export class CompanyController {
       res.status(200).json(response);
     } catch (error) {
       console.error('Error getting company:', error);
-      const response: CompanyResponse = {
+      const response: BusinessResponse = {
         success: false,
         error: 'Error al obtener la compañía'
       };
@@ -164,18 +164,18 @@ export class CompanyController {
   }
 
   // Actualizar compañía
-  async updateCompany(req: Request, res: Response): Promise<void> {
+  static async updateBusiness(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const updateData: UpdateCompanyInput = req.body;
+      const updateData: UpdateBusinessInput = req.body;
 
       // Verificar si la compañía existe
-      const existingCompany = await prisma.company.findUnique({
+      const existingCompany = await prisma.business.findUnique({
         where: { id }
       });
 
       if (!existingCompany) {
-        const response: CompanyResponse = {
+        const response: BusinessResponse = {
           success: false,
           error: 'Compañía no encontrada'
         };
@@ -183,12 +183,12 @@ export class CompanyController {
         return;
       }
 
-      const updatedCompany = await prisma.company.update({
+      const updatedCompany = await prisma.business.update({
         where: { id },
         data: updateData
       });
 
-      const response: CompanyResponse = {
+      const response: BusinessResponse = {
         success: true,
         message: 'Compañía actualizada exitosamente',
         data: updatedCompany
@@ -197,7 +197,7 @@ export class CompanyController {
       res.status(200).json(response);
     } catch (error) {
       console.error('Error updating company:', error);
-      const response: CompanyResponse = {
+      const response: BusinessResponse = {
         success: false,
         error: 'Error al actualizar la compañía'
       };
@@ -206,17 +206,17 @@ export class CompanyController {
   }
 
   // Eliminar compañía
-  async deleteCompany(req: Request, res: Response): Promise<void> {
+  static async deleteBusiness(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
 
       // Verificar si la compañía existe
-      const existingCompany = await prisma.company.findUnique({
+      const existingCompany = await prisma.business.findUnique({
         where: { id }
       });
 
       if (!existingCompany) {
-        const response: CompanyResponse = {
+        const response: BusinessResponse = {
           success: false,
           error: 'Compañía no encontrada'
         };
@@ -224,11 +224,11 @@ export class CompanyController {
         return;
       }
 
-      await prisma.company.delete({
+      await prisma.business.delete({
         where: { id }
       });
 
-      const response: CompanyResponse = {
+      const response: BusinessResponse = {
         success: true,
         message: 'Compañía eliminada exitosamente'
       };
@@ -236,7 +236,7 @@ export class CompanyController {
       res.status(200).json(response);
     } catch (error) {
       console.error('Error deleting company:', error);
-      const response: CompanyResponse = {
+      const response: BusinessResponse = {
         success: false,
         error: 'Error al eliminar la compañía'
       };
@@ -245,14 +245,14 @@ export class CompanyController {
   }
 
   // Obtener compañías por owner
-  async getCompaniesByOwner(req: Request, res: Response): Promise<void> {
+  static async getBusinessByOwner(req: Request, res: Response): Promise<void> {
     try {
       const { ownerId } = req.params;
       const { page = 1, limit = 10 } = req.query;
       const skip = (Number(page) - 1) * Number(limit);
 
       const [companies, total] = await Promise.all([
-        prisma.company.findMany({
+        prisma.business.findMany({
           where: { ownerId },
           skip,
           take: Number(limit),
@@ -269,12 +269,12 @@ export class CompanyController {
             createdAt: 'desc'
           }
         }),
-        prisma.company.count({
+        prisma.business.count({
           where: { ownerId }
         })
       ]);
 
-      const response: CompanyResponse = {
+      const response: BusinessResponse = {
         success: true,
         data: companies,
         message: `Se encontraron ${companies.length} compañías para este propietario`
@@ -291,7 +291,7 @@ export class CompanyController {
       });
     } catch (error) {
       console.error('Error getting companies by owner:', error);
-      const response: CompanyResponse = {
+      const response: BusinessResponse = {
         success: false,
         error: 'Error al obtener las compañías del propietario'
       };
@@ -300,13 +300,13 @@ export class CompanyController {
   }
 
   // Agregar guest a compañía
-  async addGuestToCompany(req: Request, res: Response): Promise<void> {
+  static async addGuestToBusiness(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { guestId } = req.body;
 
       if (!guestId) {
-        const response: CompanyResponse = {
+        const response: BusinessResponse = {
           success: false,
           error: 'guestId es requerido'
         };
@@ -315,12 +315,12 @@ export class CompanyController {
       }
 
       // Verificar si la compañía existe
-      const existingCompany = await prisma.company.findUnique({
+      const existingCompany = await prisma.business.findUnique({
         where: { id }
       });
 
       if (!existingCompany) {
-        const response: CompanyResponse = {
+        const response: BusinessResponse = {
           success: false,
           error: 'Compañía no encontrada'
         };
@@ -330,7 +330,7 @@ export class CompanyController {
 
       // Verificar si el guest ya existe
       if (existingCompany.guests.includes(guestId)) {
-        const response: CompanyResponse = {
+        const response: BusinessResponse = {
           success: false,
           error: 'El usuario ya es un guest de esta compañía'
         };
@@ -338,7 +338,7 @@ export class CompanyController {
         return;
       }
 
-      const updatedCompany = await prisma.company.update({
+      const updatedCompany = await prisma.business.update({
         where: { id },
         data: {
           guests: {
@@ -347,7 +347,7 @@ export class CompanyController {
         }
       });
 
-      const response: CompanyResponse = {
+      const response: BusinessResponse = {
         success: true,
         message: 'Guest agregado exitosamente',
         data: updatedCompany
@@ -356,7 +356,7 @@ export class CompanyController {
       res.status(200).json(response);
     } catch (error) {
       console.error('Error adding guest to company:', error);
-      const response: CompanyResponse = {
+      const response: BusinessResponse = {
         success: false,
         error: 'Error al agregar el guest'
       };
@@ -365,13 +365,13 @@ export class CompanyController {
   }
 
   // Remover guest de compañía
-  async removeGuestFromCompany(req: Request, res: Response): Promise<void> {
+  static async removeGuestFromBusiness(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { guestId } = req.body;
 
       if (!guestId) {
-        const response: CompanyResponse = {
+        const response: BusinessResponse = {
           success: false,
           error: 'guestId es requerido'
         };
@@ -380,12 +380,12 @@ export class CompanyController {
       }
 
       // Verificar si la compañía existe
-      const existingCompany = await prisma.company.findUnique({
+      const existingCompany = await prisma.business.findUnique({
         where: { id }
       });
 
       if (!existingCompany) {
-        const response: CompanyResponse = {
+        const response: BusinessResponse = {
           success: false,
           error: 'Compañía no encontrada'
         };
@@ -396,14 +396,14 @@ export class CompanyController {
       // Filtrar el guest a remover
       const updatedGuests = existingCompany.guests.filter((g:any) => g !== guestId);
 
-      const updatedCompany = await prisma.company.update({
+      const updatedCompany = await prisma.business.update({
         where: { id },
         data: {
           guests: updatedGuests
         }
       });
 
-      const response: CompanyResponse = {
+      const response: BusinessResponse = {
         success: true,
         message: 'Guest removido exitosamente',
         data: updatedCompany
@@ -412,7 +412,7 @@ export class CompanyController {
       res.status(200).json(response);
     } catch (error) {
       console.error('Error removing guest from company:', error);
-      const response: CompanyResponse = {
+      const response: BusinessResponse = {
         success: false,
         error: 'Error al remover el guest'
       };
@@ -421,4 +421,4 @@ export class CompanyController {
   }
 }
 
-export default new CompanyController();
+export default new BusinessController();

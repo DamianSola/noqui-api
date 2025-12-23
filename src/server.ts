@@ -12,6 +12,9 @@ import { config } from './config/environment';
 import { errorHandler } from './middlewares/errorHandler';
 import { notFoundHandler } from './middlewares/notFoundHandler';
 import { authRoutes } from './routes/auth.routes';
+import {companyRouter} from './routes/business.routes';
+import customerRoutes from './routes/customer.routes';
+
 
 dotenv.config()
 
@@ -44,6 +47,8 @@ app.use(cookieParser());
 app.use(morgan('combined'));
 
 app.use(`${config.apiPrefix}/auth`, authRoutes);
+app.use(`${config.apiPrefix}/business`,companyRouter);
+app.use(`${config.apiPrefix}/customers`, customerRoutes);
 
 
 // Health Check Route

@@ -1,16 +1,16 @@
 // types/company.ts
-export interface CreateCompanyInput {
+export interface CreateBusinessInput {
   name: string;
 }
 
-export interface UpdateCompanyInput {
+export interface UpdateBusinessInput {
   name?: string;
   guests?: string[]; // Array de user IDs
 }
 
 
 
-export interface ICompany {
+export interface IBusiness {
   id: string;
   name: string;
   createdAt: Date;
@@ -19,20 +19,20 @@ export interface ICompany {
   guests: string[];
 }
 
-export interface CreateCompanyInput {
+export interface CreateBusinessInput {
   name: string;
   ownerId: string;
   guests?: string[];
 }
 
-export interface UpdateCompanyInput {
+export interface UpdateBusinessInput {
   name?: string;
   guests?: string[];
 }
 
-export interface CompanyResponse {
+export interface BusinessResponse {
   success: boolean;
   message?: string;
-  data?: ICompany | ICompany[];
+  data?: IBusiness | IBusiness[];
   error?: string;
 }

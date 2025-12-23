@@ -18,7 +18,12 @@ model User {
 
   accounts      Account[]
   sessions      Session[]
-  ownedCompanies Company[] // Nueva relación
+  ownedBusiness Business[] // Nueva relación
+  auditLogs     AuditLog[]
+  notifications Notification[]
+  customers   Customer[] 
+
+
 
   @@map("users")
 }
@@ -72,7 +77,7 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
 }
 
-model Company {
+model Business {
   id        String   @id @default(cuid())
   name      String
   createdAt DateTime @default(now())
@@ -81,11 +86,245 @@ model Company {
   guests    String[] // Array de User IDs
   
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+   customers   Customer[] 
+   product Product []
+   orders      Order[]
+    inventory   Inventory[]
+    suppliers   Supplier[]
+    supplyOrders SupplyOrder[]
+    calendarEvents CalendarEvent[]
+    reports     Report[]
+    tags        Tag[]
+
   
-  @@map("companies")
+  @@map("business")
 }
 
 enum UserRole {
   USER
   ADMIN
 }
+
+model Customer {
+  id          String   @id @default(cuid())
+  name        String
+  email       String   @unique
+  phone       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  businessId  String
+  ownerId    String
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  orders      Order[]
+
+
+  @@map("customers")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  businessId  String
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orderItems   OrderItem[]
+  inventory    Inventory[]
+  productTags  ProductTag[]
+  supplyOrderItems SupplyOrderItem[]
+  
+
+  @@map("products")
+}
+
+model Order {
+  id          String   @id @default(cuid())
+  customerId  String
+  total       Float
+  status      OrderStatus @default(PENDING)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  businessId  String
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orderItems   OrderItem[]
+
+
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  CANCELED
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Float
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+
+
+  @@map("order_items")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  timestamp DateTime @default(now())
+  details   String?  @db.Text
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+
+  @@map("audit_logs")
+}
+
+model Inventory {
+  id          String   @id @default(cuid())
+  productId   String
+  quantity    Int
+  updatedAt   DateTime @updatedAt
+  businessId  String
+
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+
+  @@map("inventory")
+}
+
+model Supplier {
+  id        String   @id @default(cuid())
+  name      String
+  contact   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  businessId String
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  supplyOrders SupplyOrder[]
+
+
+  @@map("suppliers")
+}
+
+
+model SupplyOrder {
+  id          String   @id @default(cuid())
+  supplierId  String
+  total       Float
+  status      SupplyOrderStatus @default(PENDING)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  businessId  String
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  items    SupplyOrderItem[]
+
+
+  @@map("supply_orders")
+}
+
+enum SupplyOrderStatus {
+  PENDING
+  RECEIVED
+  CANCELED
+}
+
+model SupplyOrderItem {
+  id            String   @id @default(cuid())
+  supplyOrderId String
+  productId     String
+  quantity      Int
+  price         Float
+
+  supplyOrder SupplyOrder @relation(fields: [supplyOrderId], references: [id], onDelete: Cascade)
+  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("supply_order_items")
+}
+
+model CalendarEvent {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  businessId  String
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("calendar_events")
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  message     String
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  userId      String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+
+  @@map("notifications")
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  title       String
+  content     String   @db.Text
+  createdAt   DateTime @default(now())
+  businessId  String
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+
+  @@map("reports")
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  businessId String
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  productTags ProductTag[]
+
+
+  @@map("tags")
+}
+
+model ProductTag {
+  id        String   @id @default(cuid())
+  productId String
+  tagId     String
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+
+  @@unique([productId, tagId])
+  @@map("product_tags")
+}
+
+
