@@ -1,5 +1,5 @@
 {
-  "name": "noqui-api",
+  "name": "holos-api",
   "version": "1.0.0",
   "description": "Backend profesional para Noqui",
   "main": "dist/server.js",
@@ -63,6 +63,6 @@
       "tar": "^7.4.3"
     },
   
-  "author": "Tu Nombre",
+  "author": "Damián Solá",
   "license": "MIT"
 }

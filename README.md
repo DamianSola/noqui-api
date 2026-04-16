@@ -395,7 +395,7 @@ Authorization: Bearer <jwt_token>
 
 | Item | Información |
 |------|-------------|
-| Autor | Tu Nombre |
+| Autor | Damián Solá |
 | Licencia | MIT |
 ```
 
