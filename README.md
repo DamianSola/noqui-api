@@ -1,5 +1,4 @@
 
-```markdown
 # 📚 Holos API - Documentación Completa
 
 ## 📖 Descripción
