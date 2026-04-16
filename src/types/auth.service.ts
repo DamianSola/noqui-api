@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import jwt from 'jsonwebtoken';
 import { config } from '../config/environment';
 import { PasswordUtils } from '../utils/password.utils';
@@ -9,8 +9,6 @@ import {
   JwtPayload 
 } from './auth.types';
 
-
-const prisma = new PrismaClient();
 
 export class AuthService {
   private static generateToken(payload: JwtPayload): string {

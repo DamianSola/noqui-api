@@ -1,15 +1,13 @@
 // controllers/company.controller.ts
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-
 import { 
   IBusiness, 
   CreateBusinessInput, 
   UpdateBusinessInput, 
   BusinessResponse 
 } from '../types/business';
-
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
+import { uniqueSlugFromName, slugify } from '../utils/slug';
 
 
 export class BusinessController {
@@ -17,7 +15,7 @@ export class BusinessController {
   // Crear una nueva compañía
   static async createBusiness(req: Request, res: Response): Promise<void> {
     try {
-      const { name, ownerId, guests = [] }: CreateBusinessInput = req.body;
+      const { name, ownerId, guests = [], slug: slugInput }: CreateBusinessInput = req.body;
 
       // Validaciones básicas
       if (!name || !ownerId) {
@@ -43,9 +41,19 @@ export class BusinessController {
         return;
       }
 
+      let slug: string;
+      if (slugInput?.trim()) {
+        const base = slugify(slugInput.trim());
+        const taken = await prisma.business.findUnique({ where: { slug: base } });
+        slug = taken ? uniqueSlugFromName(name) : base;
+      } else {
+        slug = uniqueSlugFromName(name);
+      }
+
       const business = await prisma.business.create({
         data: {
           name,
+          slug,
           ownerId,
           guests
         }
@@ -76,6 +84,7 @@ export class BusinessController {
 
       const [companies, total] = await Promise.all([
         prisma.business.findMany({
+          where: { deletedAt: null },
           skip,
           take: Number(limit),
           include: {
@@ -91,7 +100,7 @@ export class BusinessController {
             createdAt: 'desc'
           }
         }),
-        prisma.business.count()
+        prisma.business.count({ where: { deletedAt: null } })
       ]);
 
       const response: BusinessResponse = {
@@ -125,8 +134,8 @@ export class BusinessController {
     try {
       const { id } = req.params;
 
-      const company = await prisma.business.findUnique({
-        where: { id },
+      const company = await prisma.business.findFirst({
+        where: { id, deletedAt: null },
         include: {
           owner: {
             select: {
@@ -170,8 +179,8 @@ export class BusinessController {
       const updateData: UpdateBusinessInput = req.body;
 
       // Verificar si la compañía existe
-      const existingCompany = await prisma.business.findUnique({
-        where: { id }
+      const existingCompany = await prisma.business.findFirst({
+        where: { id, deletedAt: null }
       });
 
       if (!existingCompany) {
@@ -183,9 +192,18 @@ export class BusinessController {
         return;
       }
 
+      const data: UpdateBusinessInput = { ...updateData };
+      if (data.slug?.trim()) {
+        const base = slugify(data.slug.trim());
+        const clash = await prisma.business.findFirst({
+          where: { slug: base, NOT: { id } },
+        });
+        data.slug = clash ? uniqueSlugFromName(existingCompany.name) : base;
+      }
+
       const updatedCompany = await prisma.business.update({
         where: { id },
-        data: updateData
+        data
       });
 
       const response: BusinessResponse = {
@@ -211,8 +229,8 @@ export class BusinessController {
       const { id } = req.params;
 
       // Verificar si la compañía existe
-      const existingCompany = await prisma.business.findUnique({
-        where: { id }
+      const existingCompany = await prisma.business.findFirst({
+        where: { id, deletedAt: null }
       });
 
       if (!existingCompany) {
@@ -224,8 +242,9 @@ export class BusinessController {
         return;
       }
 
-      await prisma.business.delete({
-        where: { id }
+      await prisma.business.update({
+        where: { id },
+        data: { deletedAt: new Date() },
       });
 
       const response: BusinessResponse = {
@@ -253,7 +272,7 @@ export class BusinessController {
 
       const [companies, total] = await Promise.all([
         prisma.business.findMany({
-          where: { ownerId },
+          where: { ownerId, deletedAt: null },
           skip,
           take: Number(limit),
           include: {
@@ -270,7 +289,7 @@ export class BusinessController {
           }
         }),
         prisma.business.count({
-          where: { ownerId }
+          where: { ownerId, deletedAt: null }
         })
       ]);
 
@@ -315,8 +334,8 @@ export class BusinessController {
       }
 
       // Verificar si la compañía existe
-      const existingCompany = await prisma.business.findUnique({
-        where: { id }
+      const existingCompany = await prisma.business.findFirst({
+        where: { id, deletedAt: null }
       });
 
       if (!existingCompany) {
@@ -380,8 +399,8 @@ export class BusinessController {
       }
 
       // Verificar si la compañía existe
-      const existingCompany = await prisma.business.findUnique({
-        where: { id }
+      const existingCompany = await prisma.business.findFirst({
+        where: { id, deletedAt: null }
       });
 
       if (!existingCompany) {

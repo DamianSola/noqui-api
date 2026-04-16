@@ -69,8 +69,7 @@ export class AuthController {
 
   static getMe = async (req: Request, res: Response): Promise<void> => {
     try {
-      const userId = req.user?.id;
-      console.log(userId)
+      const userId = (req.user as { userId?: string })?.userId;
       
       if (!userId) {
         ResponseHandler.error(res, 'No autenticado', 401);
@@ -83,7 +82,6 @@ export class AuthController {
         ResponseHandler.error(res, result.message, 404);
         return;
       }
-      console.log(result)
 
       ResponseHandler.success(res, result.message, result.data);
     } catch (error) {

@@ -7,23 +7,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// --- AUTENTICACIÓN Y USUARIOS ---
+
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String?
-  role      UserRole @default(USER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String         @id @default(cuid())
+  email         String         @unique
+  password      String
+  name          String?
+  role          UserRole       @default(USER)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  deletedAt     DateTime?      // Soft delete
 
   accounts      Account[]
   sessions      Session[]
-  ownedBusiness Business[] // Nueva relación
+  ownedBusiness Business[]     @relation("BusinessOwner")
   auditLogs     AuditLog[]
   notifications Notification[]
-  customers   Customer[] 
-
-
+  customers     Customer[]
 
   @@map("users")
 }
@@ -58,6 +59,287 @@ model Session {
   @@map("sessions")
 }
 
+// --- NÚCLEO DEL NEGOCIO ---
+
+model Business {
+  id             String          @id @default(cuid())
+  name           String
+  slug           String          @unique // Para URLs amigables
+  ownerId        String
+  guests         String[]        // IDs de usuarios invitados
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+
+  owner          User            @relation("BusinessOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  customers      Customer[]
+  products       Product[]
+  orders         Order[]
+  inventory      Inventory[]
+  suppliers      Supplier[]
+  supplyOrders   SupplyOrder[]
+  calendarEvents CalendarEvent[]
+  reports        Report[]
+  tags           Tag[]
+  expenses       Expense[]       // Nueva relación: Gastos operativos
+
+  @@map("business")
+}
+
+model Customer {
+  id         String    @id @default(cuid())
+  name       String
+  email      String    @unique
+  phone      String?
+  address    String?   // Calidad de vida: Dirección básica
+  businessId String
+  ownerId    String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  owner      User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  orders     Order[]
+
+  @@map("customers")
+}
+
+// --- PRODUCTOS E INVENTARIO ---
+
+model Product {
+  id             String           @id @default(cuid())
+  sku            String?          @unique // Calidad de vida: Código de barras/SKU
+  name           String
+  description    String?
+  price          Float
+  taxRate        Float            @default(0) // Calidad de vida: Impuestos (IVA)
+  businessId     String
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  deletedAt      DateTime?
+
+  business       Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orderItems     OrderItem[]
+  inventory      Inventory[]
+  productTags    ProductTag[]
+  supplyOrderItems SupplyOrderItem[]
+  stockMovements StockMovement[]  // Nueva relación: Auditoría de stock
+
+  @@map("products")
+}
+
+model Inventory {
+  id         String   @id @default(cuid())
+  productId  String
+  quantity   Int      @default(0)
+  minStock   Int      @default(0) // Calidad de vida: Alerta de stock bajo
+  businessId String
+  updatedAt  DateTime @updatedAt
+
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("inventory")
+}
+
+model StockMovement {
+  id        String       @id @default(cuid())
+  productId String
+  quantity  Int          // + para entradas, - para salidas
+  type      MovementType
+  reason    String?      // Ej: "Venta", "Devolución", "Ajuste manual"
+  createdAt DateTime     @default(now())
+
+  product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("stock_movements")
+}
+
+// --- VENTAS Y FINANZAS ---
+
+model Order {
+  id         String      @id @default(cuid())
+  customerId String
+  businessId String
+  subtotal   Float       // Calidad de vida: Monto antes de impuestos
+  taxAmount  Float       @default(0)
+  total      Float
+  status     OrderStatus @default(PENDING)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  customer   Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+  payment    Payment?    // Nueva relación: Registro de pago
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Float   // Precio al momento de la venta (histórico)
+
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+model Payment {
+  id        String        @id @default(cuid())
+  orderId   String        @unique
+  amount    Float
+  method    PaymentMethod
+  status    PaymentStatus @default(COMPLETED)
+  createdAt DateTime      @default(now())
+
+  order     Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  businessId  String
+  description String
+  amount      Float
+  category    String   // Ej: Alquiler, Servicios, Marketing
+  date        DateTime @default(now())
+
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("expenses")
+}
+
+// --- PROVEEDORES ---
+
+model Supplier {
+  id           String        @id @default(cuid())
+  name         String
+  contactName  String?
+  email        String?
+  phone        String?
+  businessId   String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  business     Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  supplyOrders SupplyOrder[]
+
+  @@map("suppliers")
+}
+
+model SupplyOrder {
+  id         String            @id @default(cuid())
+  supplierId String
+  businessId String
+  total      Float
+  status     SupplyOrderStatus @default(PENDING)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  supplier   Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  business   Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  items      SupplyOrderItem[]
+
+  @@map("supply_orders")
+}
+
+model SupplyOrderItem {
+  id            String      @id @default(cuid())
+  supplyOrderId String
+  productId     String
+  quantity      Int
+  price         Float
+
+  supplyOrder   SupplyOrder @relation(fields: [supplyOrderId], references: [id], onDelete: Cascade)
+  product       Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("supply_order_items")
+}
+
+// --- OTROS (TAGS, CALENDARIO, AUDITORÍA) ---
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  details   String?  @db.Text
+  timestamp DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("audit_logs")
+}
+
+model CalendarEvent {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  businessId  String
+
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("calendar_events")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  message   String
+  read      Boolean  @default(false)
+  userId    String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model Report {
+  id         String   @id @default(cuid())
+  title      String
+  content    String   @db.Text
+  businessId String
+  createdAt  DateTime @default(now())
+
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("reports")
+}
+
+model Tag {
+  id          String       @id @default(cuid())
+  name        String
+  businessId  String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  business    Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  productTags ProductTag[]
+
+  @@unique([name, businessId]) // Un tag es único por negocio
+  @@map("tags")
+}
+
+model ProductTag {
+  id        String  @id @default(cuid())
+  productId String
+  tagId     String
+
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, tagId])
+  @@map("product_tags")
+}
+
 model VerificationToken {
   identifier String
   token      String   @unique
@@ -77,88 +359,11 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
 }
 
-model Business {
-  id        String   @id @default(cuid())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  ownerId   String
-  guests    String[] // Array de User IDs
-  
-  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-
-   customers   Customer[] 
-   product Product []
-   orders      Order[]
-    inventory   Inventory[]
-    suppliers   Supplier[]
-    supplyOrders SupplyOrder[]
-    calendarEvents CalendarEvent[]
-    reports     Report[]
-    tags        Tag[]
-
-  
-  @@map("business")
-}
+// --- ENUMS ---
 
 enum UserRole {
   USER
   ADMIN
-}
-
-model Customer {
-  id          String   @id @default(cuid())
-  name        String
-  email       String   @unique
-  phone       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  businessId  String
-  ownerId    String
-
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-
-  orders      Order[]
-
-
-  @@map("customers")
-}
-
-model Product {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  price       Float
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  businessId  String
-
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  orderItems   OrderItem[]
-  inventory    Inventory[]
-  productTags  ProductTag[]
-  supplyOrderItems SupplyOrderItem[]
-  
-
-  @@map("products")
-}
-
-model Order {
-  id          String   @id @default(cuid())
-  customerId  String
-  total       Float
-  status      OrderStatus @default(PENDING)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  businessId  String
-
-  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  orderItems   OrderItem[]
-
-
-  @@map("orders")
 }
 
 enum OrderStatus {
@@ -167,164 +372,30 @@ enum OrderStatus {
   CANCELED
 }
 
-model OrderItem {
-  id        String   @id @default(cuid())
-  orderId   String
-  productId String
-  quantity  Int
-  price     Float
-
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-
-
-  @@map("order_items")
-}
-
-model AuditLog {
-  id        String   @id @default(cuid())
-  userId    String
-  action    String
-  timestamp DateTime @default(now())
-  details   String?  @db.Text
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-
-  @@map("audit_logs")
-}
-
-model Inventory {
-  id          String   @id @default(cuid())
-  productId   String
-  quantity    Int
-  updatedAt   DateTime @updatedAt
-  businessId  String
-
-  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-
-
-  @@map("inventory")
-}
-
-model Supplier {
-  id        String   @id @default(cuid())
-  name      String
-  contact   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  businessId String
-
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  supplyOrders SupplyOrder[]
-
-
-  @@map("suppliers")
-}
-
-
-model SupplyOrder {
-  id          String   @id @default(cuid())
-  supplierId  String
-  total       Float
-  status      SupplyOrderStatus @default(PENDING)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  businessId  String
-
-  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  items    SupplyOrderItem[]
-
-
-  @@map("supply_orders")
-}
-
 enum SupplyOrderStatus {
   PENDING
   RECEIVED
   CANCELED
 }
 
-model SupplyOrderItem {
-  id            String   @id @default(cuid())
-  supplyOrderId String
-  productId     String
-  quantity      Int
-  price         Float
-
-  supplyOrder SupplyOrder @relation(fields: [supplyOrderId], references: [id], onDelete: Cascade)
-  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  @@map("supply_order_items")
+enum PaymentMethod {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  TRANSFER
 }
 
-model CalendarEvent {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  startTime   DateTime
-  endTime     DateTime
-  businessId  String
-
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-
-  @@map("calendar_events")
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
 }
 
-model Notification {
-  id          String   @id @default(cuid())
-  message     String
-  read        Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  userId      String
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-
-  @@map("notifications")
+enum MovementType {
+  SALE
+  PURCHASE
+  ADJUSTMENT
+  RETURN
+  WASTE
 }
-
-model Report {
-  id          String   @id @default(cuid())
-  title       String
-  content     String   @db.Text
-  createdAt   DateTime @default(now())
-  businessId  String
-
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-
-
-  @@map("reports")
-}
-
-model Tag {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  businessId String
-
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  productTags ProductTag[]
-
-
-  @@map("tags")
-}
-
-model ProductTag {
-  id        String   @id @default(cuid())
-  productId String
-  tagId     String
-
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-
-  @@unique([productId, tagId])
-  @@map("product_tags")
-}
-
-

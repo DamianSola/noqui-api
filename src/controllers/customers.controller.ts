@@ -1,20 +1,25 @@
 // controllers/customer.controller.ts
-import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-
+import { Response } from 'express';
+import { AuthRequest } from '../middlewares/auth.middleware';
 import {
   ICustomer,
   CreateCustomerInput,
   UpdateCustomerInput,
   CustomerResponse,
 } from '../types/customers';
-
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
+import { assertCanAccessBusiness } from '../utils/businessAccess';
 
 export class CustomerController {
   // Crear un nuevo cliente
-  static async createCustomer(req: Request, res: Response): Promise<void> {
+  static async createCustomer(req: AuthRequest, res: Response): Promise<void> {
     try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ success: false, error: 'No autenticado' });
+        return;
+      }
+
       const { name, email, phone, businessId }: CreateCustomerInput = req.body;
 
       if (!name || !email || !businessId) {
@@ -27,8 +32,8 @@ export class CustomerController {
       }
 
       // Verificar si el negocio existe
-      const businessExists = await prisma.business.findUnique({
-        where: { id: businessId },
+      const businessExists = await prisma.business.findFirst({
+        where: { id: businessId, deletedAt: null },
       });
 
       if (!businessExists) {
@@ -37,6 +42,12 @@ export class CustomerController {
           error: 'El negocio no existe',
         };
         res.status(404).json(response);
+        return;
+      }
+
+      const access = await assertCanAccessBusiness(userId, businessId);
+      if (!access.ok) {
+        res.status(access.status).json({ success: false, error: access.message });
         return;
       }
 
@@ -78,8 +89,14 @@ export class CustomerController {
   }
 
   // Obtener todos los clientes por negocio (con paginación y búsqueda)
-  static async getAllCustomers(req: Request, res: Response): Promise<void> {
+  static async getAllCustomers(req: AuthRequest, res: Response): Promise<void> {
     try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ success: false, error: 'No autenticado' });
+        return;
+      }
+
       const {
         businessId,
         page = 1,
@@ -101,12 +118,19 @@ export class CustomerController {
         return;
       }
 
+      const access = await assertCanAccessBusiness(userId, businessId as string);
+      if (!access.ok) {
+        res.status(access.status).json({ success: false, error: access.message });
+        return;
+      }
+
       const pageNumber = Number(page) || 1;
       const limitNumber = Number(limit) || 10;
       const skip = (pageNumber - 1) * limitNumber;
 
       const where: any = {
         businessId,
+        deletedAt: null,
       };
 
       if (search && search.trim() !== '') {
@@ -154,16 +178,32 @@ export class CustomerController {
     }
   }
 
-  static async getCustomersByOwner(req: Request, res: Response): Promise<void> {
+  static async getCustomersByOwner(req: AuthRequest, res: Response): Promise<void> {
       try {
+        const userId = req.user?.userId;
+        if (!userId) {
+          res.status(401).json({ success: false, error: 'No autenticado' });
+          return;
+        }
+
         const { ownerId } = req.params;
-        console.log('Owner ID:', ownerId);
         const { page = 1, limit = 10 } = req.query;
+
+        if (ownerId !== userId) {
+          const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { role: true },
+          });
+          if (user?.role !== 'ADMIN') {
+            res.status(403).json({ success: false, error: 'No autorizado' });
+            return;
+          }
+        }
         const skip = (Number(page) - 1) * Number(limit);
   
         const [customers, total] = await Promise.all([
           prisma.customer.findMany({
-            where: { ownerId },
+            where: { ownerId, deletedAt: null },
             skip,
             take: Number(limit),
             include: {
@@ -180,7 +220,7 @@ export class CustomerController {
             }
           }),
           prisma.customer.count({
-            where: { ownerId }
+            where: { ownerId, deletedAt: null }
           })
         ]);
   
@@ -210,12 +250,18 @@ export class CustomerController {
     }
 
   // Obtener cliente por ID
-  static async getCustomerById(req: Request, res: Response): Promise<void> {
+  static async getCustomerById(req: AuthRequest, res: Response): Promise<void> {
     try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ success: false, error: 'No autenticado' });
+        return;
+      }
+
       const { id } = req.params;
 
-      const customer = await prisma.customer.findUnique({
-        where: { id },
+      const customer = await prisma.customer.findFirst({
+        where: { id, deletedAt: null },
         include: {
           business: {
             select: {
@@ -232,6 +278,12 @@ export class CustomerController {
           error: 'Cliente no encontrado',
         };
         res.status(404).json(response);
+        return;
+      }
+
+      const access = await assertCanAccessBusiness(userId, customer.businessId);
+      if (!access.ok) {
+        res.status(access.status).json({ success: false, error: access.message });
         return;
       }
 
@@ -253,13 +305,19 @@ export class CustomerController {
   }
 
   // Actualizar cliente
-  static async updateCustomer(req: Request, res: Response): Promise<void> {
+  static async updateCustomer(req: AuthRequest, res: Response): Promise<void> {
     try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ success: false, error: 'No autenticado' });
+        return;
+      }
+
       const { id } = req.params;
       const updateData: UpdateCustomerInput = req.body;
 
-      const existingCustomer = await prisma.customer.findUnique({
-        where: { id },
+      const existingCustomer = await prisma.customer.findFirst({
+        where: { id, deletedAt: null },
       });
 
       if (!existingCustomer) {
@@ -268,6 +326,12 @@ export class CustomerController {
           error: 'Cliente no encontrado',
         };
         res.status(404).json(response);
+        return;
+      }
+
+      const access = await assertCanAccessBusiness(userId, existingCustomer.businessId);
+      if (!access.ok) {
+        res.status(access.status).json({ success: false, error: access.message });
         return;
       }
 
@@ -304,12 +368,18 @@ export class CustomerController {
   }
 
   // Eliminar cliente
-  static async deleteCustomer(req: Request, res: Response): Promise<void> {
+  static async deleteCustomer(req: AuthRequest, res: Response): Promise<void> {
     try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ success: false, error: 'No autenticado' });
+        return;
+      }
+
       const { id } = req.params;
 
-      const existingCustomer = await prisma.customer.findUnique({
-        where: { id },
+      const existingCustomer = await prisma.customer.findFirst({
+        where: { id, deletedAt: null },
       });
 
       if (!existingCustomer) {
@@ -321,8 +391,15 @@ export class CustomerController {
         return;
       }
 
-      await prisma.customer.delete({
+      const access = await assertCanAccessBusiness(userId, existingCustomer.businessId);
+      if (!access.ok) {
+        res.status(access.status).json({ success: false, error: access.message });
+        return;
+      }
+
+      await prisma.customer.update({
         where: { id },
+        data: { deletedAt: new Date() },
       });
 
       const response: CustomerResponse = {

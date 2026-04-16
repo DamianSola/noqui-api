@@ -12,8 +12,21 @@ import { config } from './config/environment';
 import { errorHandler } from './middlewares/errorHandler';
 import { notFoundHandler } from './middlewares/notFoundHandler';
 import { authRoutes } from './routes/auth.routes';
-import {companyRouter} from './routes/business.routes';
+import { companyRouter } from './routes/business.routes';
 import customerRoutes from './routes/customer.routes';
+import productsRoutes from './routes/products.routes';
+import inventoryRoutes from './routes/inventory.routes';
+import stockMovementsRoutes from './routes/stockMovements.routes';
+import ordersRoutes from './routes/orders.routes';
+import paymentsRoutes from './routes/payments.routes';
+import expensesRoutes from './routes/expenses.routes';
+import suppliersRoutes from './routes/suppliers.routes';
+import supplyOrdersRoutes from './routes/supplyOrders.routes';
+import tagsRoutes from './routes/tags.routes';
+import calendarRoutes from './routes/calendar.routes';
+import notificationsRoutes from './routes/notifications.routes';
+import reportsRoutes from './routes/reports.routes';
+import auditLogsRoutes from './routes/auditLogs.routes';
 
 
 dotenv.config()
@@ -47,8 +60,21 @@ app.use(cookieParser());
 app.use(morgan('combined'));
 
 app.use(`${config.apiPrefix}/auth`, authRoutes);
-app.use(`${config.apiPrefix}/business`,companyRouter);
+app.use(`${config.apiPrefix}/business`, companyRouter);
 app.use(`${config.apiPrefix}/customers`, customerRoutes);
+app.use(`${config.apiPrefix}/products`, productsRoutes);
+app.use(`${config.apiPrefix}/inventory`, inventoryRoutes);
+app.use(`${config.apiPrefix}/stock-movements`, stockMovementsRoutes);
+app.use(`${config.apiPrefix}/orders`, ordersRoutes);
+app.use(`${config.apiPrefix}/payments`, paymentsRoutes);
+app.use(`${config.apiPrefix}/expenses`, expensesRoutes);
+app.use(`${config.apiPrefix}/suppliers`, suppliersRoutes);
+app.use(`${config.apiPrefix}/supply-orders`, supplyOrdersRoutes);
+app.use(`${config.apiPrefix}/tags`, tagsRoutes);
+app.use(`${config.apiPrefix}/calendar`, calendarRoutes);
+app.use(`${config.apiPrefix}/notifications`, notificationsRoutes);
+app.use(`${config.apiPrefix}/reports`, reportsRoutes);
+app.use(`${config.apiPrefix}/audit-logs`, auditLogsRoutes);
 
 
 // Health Check Route
