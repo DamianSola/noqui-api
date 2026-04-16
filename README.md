@@ -1,4 +1,3 @@
-Aquí tienes el README completo en formato markdown con estilos (tablas, negritas, código, etc.):
 
 ```markdown
 # 📚 Holos API - Documentación Completa
