@@ -135,17 +135,31 @@ export class BusinessController {
       const { id } = req.params;
 
       const company = await prisma.business.findFirst({
-        where: { id, deletedAt: null },
-        include: {
-          owner: {
-            select: {
-              id: true,
-              name: true,
-              email: true
-            }
-          }
-        }
-      });
+  where: { id, deletedAt: null },
+  include: {
+    owner: {
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+    },
+    _count: {
+      select: {
+        customers:     true,
+        products:      true,
+        orders:        true,
+        inventory:     true,
+        suppliers:     true,
+        supplyOrders:  true,
+        calendarEvents:true,
+        reports:       true,
+        tags:          true,
+        expenses:      true,
+      },
+    },
+  },
+});
 
       if (!company) {
         const response: BusinessResponse = {
@@ -292,6 +306,8 @@ export class BusinessController {
           where: { ownerId, deletedAt: null }
         })
       ]);
+
+      // console.log(ownerId)
 
       const response: BusinessResponse = {
         success: true,

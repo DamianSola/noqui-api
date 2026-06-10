@@ -6,6 +6,7 @@ const router = Router();
 
 router.get('/', authenticateToken, ProductsController.list);
 router.post('/', authenticateToken, ProductsController.create);
+router.get('/stats', authenticateToken, ProductsController.getStats);  // ← primero
 router.get('/:id', authenticateToken, ProductsController.getById);
 router.put('/:id', authenticateToken, ProductsController.update);
 router.delete('/:id', authenticateToken, ProductsController.remove);

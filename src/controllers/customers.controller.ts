@@ -31,6 +31,19 @@ export class CustomerController {
         return;
       }
 
+      const emailExists = await prisma.customer.findFirst({
+        where: { email, deletedAt: null },
+      });
+
+      if(emailExists) {
+        const response: CustomerResponse = {
+          success: false,
+          error: 'Ya existe un cliente con ese email.',
+        };
+        res.status(400).json(response);
+        return;
+      }
+
       // Verificar si el negocio existe
       const businessExists = await prisma.business.findFirst({
         where: { id: businessId, deletedAt: null },
@@ -69,7 +82,8 @@ export class CustomerController {
 
       res.status(201).json(response);
     } catch (error: any) {
-      console.error('Error creating customer:', error);
+      // console.error('Error creating customer:', error);
+
 
       if (error.code === 'P2002') {
         const response: CustomerResponse = {

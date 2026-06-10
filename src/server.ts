@@ -37,6 +37,9 @@ const app = express();
 app.use(helmet());
 app.use(compression());
 
+app.use(morgan('dev'));  // o 'combined' en producción
+
+
 // CORS Configuration
 app.use(cors({
   origin: config.frontendUrl,

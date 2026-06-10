@@ -21,7 +21,25 @@ model User {
 
   accounts      Account[]
   sessions      Session[]
+  model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  password      String
+  name          String?
+  role          UserRole       @default(USER)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  deletedAt     DateTime?      // Soft delete
+
+  accounts      Account[]
+  sessions      Session[]
   ownedBusiness Business[]     @relation("BusinessOwner")
+  auditLogs     AuditLog[]
+  notifications Notification[]
+  customers     Customer[]
+
+  @@map("users")
+} Business[]     @relation("BusinessOwner")
   auditLogs     AuditLog[]
   notifications Notification[]
   customers     Customer[]
@@ -117,7 +135,7 @@ model Product {
   businessId     String
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
-  deletedAt      DateTime?
+  deletedAt      DateTime?        @default(null)
 
   business       Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
   orderItems     OrderItem[]
